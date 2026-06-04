@@ -1,0 +1,9 @@
+.ua-calendar-btn {
+    margin-left: 10px;
+    cursor: pointer;
+}
+
+.ua-calendar-added {
+    color: green;
+    font-weight: bold;
+}

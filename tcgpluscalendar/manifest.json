@@ -1,0 +1,16 @@
+{
+    "manifest_version": 3,
+    "name": "Union Arena Calendar",
+    "version": "1.0",
+    "description": "Adds Google Calendar links to Union Arena events",
+    "permissions": [
+        "storage"
+    ],
+    "content_scripts": [
+        {
+            "matches": [ "https://www.bandai-tcg-plus.com/my_event" ],
+            "js": [ "content.js" ],
+            "css": [ "styles.css" ]
+        }
+    ]
+}
