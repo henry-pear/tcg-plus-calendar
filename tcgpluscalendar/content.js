@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Union Arena Calendar
  * Copyright (C) 2026 Enrique Peña Arenzana
  *
@@ -36,51 +36,66 @@ function parseEventDate(dateText) {
 }
 
 async function createCalendarButton(eventId, button, calendarUrl) {
-
+    const MAX_RETRIES = 4;
+    let retryCount = 0;
+    // Check whether this event was previously marked as added
     const result = await chrome.storage.local.get(eventId);
-
     if (result[eventId]) {
         button.textContent = "✓ Added";
-        button.disabled = true;
         button.classList.add("ua-calendar-added");
+        button.setAttribute("aria-disabled", "true");
     }
-
     button.addEventListener("click", async () => {
+        // Button is currently in the "Added" state
+        if (button.classList.contains("ua-calendar-added")) {
+            retryCount++;
+            // After the fourth retry, reset the button
+            if (retryCount >= MAX_RETRIES) {
+                retryCount = 0;
+                button.textContent = "📅 Add to Calendar";
+                button.classList.remove("ua-calendar-added");
+                button.removeAttribute("aria-disabled");
 
+                // Remove the stored "added" state so the next attempt is treated as a new initial attempt.
+                await chrome.storage.local.remove(eventId);
+                return;
+            }
+            // Show remaining retry attempts
+            const remaining = MAX_RETRIES - retryCount;
+            button.textContent = `↻ Retry? (${remaining} remaining)`;
+            return;
+        }
+
+        // First attempt
         window.open(calendarUrl, "_blank");
-
+        // Remember that the user attempted to add this event
         await chrome.storage.local.set({
-            [eventId]: true
+            [eventId]: true,
         });
-
+        // Change button to Added state
         button.textContent = "✓ Added";
-        button.disabled = true;
         button.classList.add("ua-calendar-added");
+        button.setAttribute("aria-disabled", "true");
     });
-;}
+}
 
-waitForElement(".event-item").then(elements => {
-    elements.forEach(event => {
-        const dateText =
-            event.querySelector(".event-date")
-                ?.textContent
-                ?.trim();
+waitForElement(".event-item").then((elements) => {
+    elements.forEach((event) => {
+        const dateText = event
+            .querySelector(".event-date")
+            ?.textContent?.trim();
 
-        const seriesName =
-            event.querySelector(".event-series-name")
-                ?.textContent
-                ?.trim();
+        const seriesName = event
+            .querySelector(".event-series-name")
+            ?.textContent?.trim();
 
-        const storeName =
-            event.querySelector(".event-name-link")
-                ?.textContent
-                ?.trim();
+        const storeName = event
+            .querySelector(".event-name-link")
+            ?.textContent?.trim();
 
-        const address =
-            event.querySelector(".event-address")
-                ?.childNodes[0]
-                ?.textContent
-                ?.trim();
+        const address = event
+            .querySelector(".event-address")
+            ?.childNodes[0]?.textContent?.trim();
 
         const date = parseEventDate(dateText);
         const url = buildCalendarLink(
@@ -96,9 +111,7 @@ waitForElement(".event-item").then(elements => {
         button.className = "btn btn-primary";
 
         createCalendarButton(eventId, button, url).then(() => {
-            event
-                .querySelector(".event-item-buttons")
-                .appendChild(button);
+            event.querySelector(".event-item-buttons").appendChild(button);
         });
     });
 });
@@ -109,23 +122,16 @@ function formatGoogleDate(date) {
         .replace(/\.\d{3}/, "");
 }
 
-function buildCalendarLink(
-    title,
-    start,
-    location,
-    description
-) {
-
+function buildCalendarLink(title, start, location, description) {
     const end = new Date(start);
     end.setHours(end.getHours() + 3);
 
     const params = new URLSearchParams({
         action: "TEMPLATE",
         text: title,
-        dates:
-            `${formatGoogleDate(start)}/${formatGoogleDate(end)}`,
+        dates: `${formatGoogleDate(start)}/${formatGoogleDate(end)}`,
         location,
-        details: description
+        details: description,
     });
 
     return `https://calendar.google.com/calendar/render?${params}`;
